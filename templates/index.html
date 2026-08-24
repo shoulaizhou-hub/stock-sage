@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A股智能分析助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .navbar h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .navbar .search-box {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .navbar input {
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            outline: none;
+            width: 250px;
+        }
+        
+        .navbar button {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        
+        .navbar button:hover {
+            transform: scale(1.05);
+        }
+        
+        .main-content {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .tab {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+        }
+        
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #00d4ff;
+        }
+        
+        .stock-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .info-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .info-item .label {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-item .value {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        
+        .info-item .value.up {
+            color: #00ff88;
+        }
+        
+        .info-item .value.down {
+            color: #ff4444;
+        }
+        
+        .chart-container {
+            height: 400px;
+            margin-top: 1rem;
+        }
+        
+        .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        
+        .indicator-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .indicator-item .name {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+        }
+        
+        .indicator-item .value {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        
+        .signals {
+            margin-top: 1rem;
+        }
+        
+        .signal {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .signal.bullish {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+        
+        .signal.bearish {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+        }
+        
+        .signal.neutral {
+            background: rgba(255, 255, 255, 0.1);
+            color: #aaa;
+        }
+        
+        .fundamental-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .news-list {
+            list-style: none;
+        }
+        
+        .news-item {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .news-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .news-item .title {
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .news-item .meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        
+        .sentiment-tag {
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.7rem;
+        }
+        
+        .sentiment-tag.positive {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+        
+        .sentiment-tag.negative {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+        }
+        
+        .sentiment-tag.neutral {
+            background: rgba(255, 255, 255, 0.1);
+            color: #aaa;
+        }
+        
+        .screen-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .screen-form label {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .screen-form input, .screen-form select {
+            padding: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            outline: none;
+            width: 100%;
+        }
+        
+        .screen-results {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .result-table th, .result-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .result-table th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+        }
+        
+        .ai-chat {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 10px;
+            max-width: 90%;
+        }
+        
+        .chat-message.user {
+            background: rgba(0, 212, 255, 0.2);
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        
+        .chat-message.ai {
+            background: rgba(123, 44, 191, 0.2);
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            outline: none;
+        }
+        
+        .chat-input button {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #aaa;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .report-content {
+            white-space: pre-wrap;
+            line-height: 1.8;
+            font-size: 0.95rem;
+            color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>📈 A股智能分析助手</h1>
+        <div class="search-box">
+            <input type="text" id="stockInput" placeholder="输入股票代码或名称..." list="stockList">
+            <datalist id="stockList"></datalist>
+            <button onclick="loadStock()">查询</button>
+            <button onclick="togglePreferences()" style="background: linear-gradient(90deg, #ff9a9e, #fecfef);">⚙️ 设置</button>
+        </div>
+    </div>
+    
+    <div id="preferencesModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div class="card" style="width: 90%; max-width: 500px;">
+            <h2>⚙️ 用户偏好设置</h2>
+            <div class="screen-form">
+                <div>
+                    <label>风险承受能力</label>
+                    <select id="riskTolerance">
+                        <option value="low">保守</option>
+                        <option value="medium" selected>稳健</option>
+                        <option value="high">激进</option>
+                    </select>
+                </div>
+                <div>
+                    <label>持有周期</label>
+                    <select id="holdingPeriod">
+                        <option value="short">短期(1-3个月)</option>
+                        <option value="medium" selected>中期(3-12个月)</option>
+                        <option value="long">长期(1年以上)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>资金规模</label>
+                    <select id="capitalSize">
+                        <option value="small">小额(&lt;10万)</option>
+                        <option value="medium" selected>中等(10-100万)</option>
+                        <option value="large">大额(&gt;100万)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>偏好行业(逗号分隔)</label>
+                    <input type="text" id="preferredSectors" placeholder="如：金融,科技,消费">
+                </div>
+            </div>
+            <button class="tab" onclick="savePreferences()" style="margin-top: 1rem;">保存设置</button>
+            <button class="tab" onclick="togglePreferences()" style="margin-top: 0.5rem; background: rgba(255,255,255,0.1);">关闭</button>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab(event, 'technical')">技术分析</button>
+            <button class="tab" onclick="switchTab(event, 'fundamental')">基本面分析</button>
+            <button class="tab" onclick="switchTab(event, 'news')">新闻舆情</button>
+            <button class="tab" onclick="switchTab(event, 'screener')">股票筛选</button>
+            <button class="tab" onclick="switchTab(event, 'ai')">AI问答</button>
+        </div>
+        
+        <div id="technical" class="content-section active">
+            <div class="card">
+                <h2>📊 股票行情概览</h2>
+                <div class="stock-info" id="stockInfo">
+                    <div class="info-item">
+                        <div class="label">股票代码</div>
+                        <div class="value" id="stockCode">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">最新价格</div>
+                        <div class="value" id="currentPrice">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">今日开盘</div>
+                        <div class="value" id="openPrice">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">今日最高</div>
+                        <div class="value" id="highPrice">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">今日最低</div>
+                        <div class="value" id="lowPrice">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">涨跌幅</div>
+                        <div class="value" id="changePercent">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📈 K线图</h2>
+                <div class="chart-container" id="klineChart"></div>
+            </div>
+            
+            <div class="card">
+                <h2>📉 技术指标</h2>
+                <div class="indicators-grid" id="indicatorsGrid"></div>
+            </div>
+            
+            <div class="card">
+                <h2>🔔 交易信号</h2>
+                <div class="signals" id="signals"></div>
+            </div>
+        </div>
+        
+        <div id="fundamental" class="content-section">
+            <div class="card">
+                <h2>🏢 公司概况</h2>
+                <div class="fundamental-grid" id="companyInfo"></div>
+            </div>
+            
+            <div class="card">
+                <h2>💰 盈利能力</h2>
+                <div class="fundamental-grid" id="profitInfo"></div>
+            </div>
+            
+            <div class="card">
+                <h2>📊 杜邦分析</h2>
+                <div class="fundamental-grid" id="dupontInfo"></div>
+            </div>
+            
+            <div class="card">
+                <h2>💵 现金流</h2>
+                <div class="fundamental-grid" id="cashFlowInfo"></div>
+            </div>
+        </div>
+        
+        <div id="news" class="content-section">
+            <div class="card">
+                <h2>📰 最新新闻</h2>
+                <ul class="news-list" id="newsList"></ul>
+            </div>
+            
+            <div class="card">
+                <h2>📊 舆情分析</h2>
+                <div class="fundamental-grid" id="sentimentInfo"></div>
+            </div>
+        </div>
+        
+        <div id="screener" class="content-section">
+            <div class="card">
+                <h2>🔍 股票筛选条件</h2>
+                <div class="screen-form">
+                    <div>
+                        <label>市盈率PE (最小值)</label>
+                        <input type="number" id="peMin" placeholder="0">
+                    </div>
+                    <div>
+                        <label>市盈率PE (最大值)</label>
+                        <input type="number" id="peMax" placeholder="100">
+                    </div>
+                    <div>
+                        <label>市净率PB (最小值)</label>
+                        <input type="number" id="pbMin" placeholder="0">
+                    </div>
+                    <div>
+                        <label>市净率PB (最大值)</label>
+                        <input type="number" id="pbMax" placeholder="20">
+                    </div>
+                    <div>
+                        <label>股价 (最小值)</label>
+                        <input type="number" id="priceMin" placeholder="0">
+                    </div>
+                    <div>
+                        <label>股价 (最大值)</label>
+                        <input type="number" id="priceMax" placeholder="1000">
+                    </div>
+                    <div>
+                        <label>MA5上穿MA10</label>
+                        <select id="ma5AboveMa10">
+                            <option value="false">不限制</option>
+                            <option value="true">是</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="tab" onclick="screenStocks()" style="margin-top: 1rem;">开始筛选</button>
+            </div>
+            
+            <div class="card">
+                <h2>📋 筛选结果</h2>
+                <div class="screen-results" id="screenResults"></div>
+            </div>
+        </div>
+        
+        <div id="ai" class="content-section">
+            <div class="card">
+                <h2>🤖 AI智能问答</h2>
+                <div class="ai-chat">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message ai">您好！我是您的A股投资分析助手。请问有什么可以帮助您的？</div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="aiInput" placeholder="输入您的问题..." onkeypress="handleEnter(event)">
+                        <button onclick="askAI()">发送</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📝 生成分析报告</h2>
+                <button class="tab" onclick="generateReport()" style="margin-bottom: 1rem;">生成报告</button>
+                <div id="reportContent" class="report-content"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentStock = 'sh.600000';
+        
+        async function loadStockList() {
+            try {
+                const response = await fetch('/api/stock_list');
+                const stocks = await response.json();
+                const datalist = document.getElementById('stockList');
+                datalist.innerHTML = '';
+                stocks.forEach(stock => {
+                    const option = document.createElement('option');
+                    option.value = stock.code + ' ' + stock.name;
+                    datalist.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载股票列表失败:', error);
+            }
+        }
+        
+        async function loadStock() {
+            const input = document.getElementById('stockInput').value.trim();
+            if (!input) return;
+            
+            let stockCode = input;
+            if (!stockCode.startsWith('sh.') && !stockCode.startsWith('sz.')) {
+                if (input.length === 6) {
+                    stockCode = (input.startsWith('6') ? 'sh.' : 'sz.') + input;
+                } else {
+                    try {
+                        const response = await fetch('/api/stock_list');
+                        const stocks = await response.json();
+                        const matched = stocks.find(s => s.name.includes(input));
+                        if (matched) {
+                            stockCode = matched.code;
+                        }
+                    } catch (error) {
+                        console.error('搜索股票失败:', error);
+                        return;
+                    }
+                }
+            }
+            
+            currentStock = stockCode;
+            document.getElementById('stockInput').value = stockCode;
+            
+            await loadTechnicalData();
+            await loadFundamentalData();
+            await loadNews();
+        }
+        
+        async function loadTechnicalData() {
+            try {
+                const response = await fetch('/api/technical_indicators', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stock_code: currentStock })
+                });
+                const data = await response.json();
+                
+                document.getElementById('stockCode').textContent = currentStock;
+                document.getElementById('currentPrice').textContent = data.price.current.toFixed(2);
+                document.getElementById('openPrice').textContent = data.price.open.toFixed(2);
+                document.getElementById('highPrice').textContent = data.price.high.toFixed(2);
+                document.getElementById('lowPrice').textContent = data.price.low.toFixed(2);
+                
+                const changeEl = document.getElementById('changePercent');
+                changeEl.textContent = (data.price.change_percent >= 0 ? '+' : '') + data.price.change_percent.toFixed(2) + '%';
+                changeEl.className = 'value ' + (data.price.change_percent >= 0 ? 'up' : 'down');
+                
+                const indicatorsGrid = document.getElementById('indicatorsGrid');
+                indicatorsGrid.innerHTML = '';
+                
+                const maData = data.moving_average;
+                Object.entries(maData).forEach(([key, value]) => {
+                    indicatorsGrid.innerHTML += `
+                        <div class="indicator-item">
+                            <div class="name">${key.toUpperCase()}</div>
+                            <div class="value">${value.toFixed(2)}</div>
+                        </div>
+                    `;
+                });
+                
+                const momentumData = data.momentum;
+                Object.entries(momentumData).forEach(([key, value]) => {
+                    indicatorsGrid.innerHTML += `
+                        <div class="indicator-item">
+                            <div class="name">${key.toUpperCase()}</div>
+                            <div class="value">${typeof value === 'number' ? value.toFixed(2) : value}</div>
+                        </div>
+                    `;
+                });
+                
+                const signalsDiv = document.getElementById('signals');
+                signalsDiv.innerHTML = '';
+                data.signal.forEach(signal => {
+                    let type = 'neutral';
+                    if (signal.includes('看涨') || signal.includes('金叉') || signal.includes('多头')) {
+                        type = 'bullish';
+                    } else if (signal.includes('看跌') || signal.includes('死叉') || signal.includes('空头')) {
+                        type = 'bearish';
+                    }
+                    signalsDiv.innerHTML += `<span class="signal ${type}">${signal}</span>`;
+                });
+                
+                await loadKlineChart();
+            } catch (error) {
+                console.error('加载技术数据失败:', error);
+            }
+        }
+        
+        async function loadKlineChart() {
+            try {
+                const response = await fetch('/api/history_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stock_code: currentStock })
+                });
+                const data = await response.json();
+                
+                const dates = data.map(d => d.date);
+                const opens = data.map(d => d.open);
+                const highs = data.map(d => d.high);
+                const lows = data.map(d => d.low);
+                const closes = data.map(d => d.close);
+                
+                const ctx = document.getElementById('klineChart').getContext('2d');
+                
+                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                gradient.addColorStop(0, 'rgba(0, 255, 136, 0.3)');
+                gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            label: '收盘价',
+                            data: closes,
+                            borderColor: '#00d4ff',
+                            backgroundColor: gradient,
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '收盘价走势',
+                                color: '#fff',
+                                font: { size: 16 }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: '#aaa', maxTicksLimit: 10 }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: '#aaa' }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('加载K线图失败:', error);
+            }
+        }
+        
+        async function loadFundamentalData() {
+            try {
+                const response = await fetch('/api/fundamental_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stock_code: currentStock })
+                });
+                const data = await response.json();
+                
+                const companyInfo = document.getElementById('companyInfo');
+                companyInfo.innerHTML = '';
+                
+                if (data.company) {
+                    const company = data.company;
+                    companyInfo.innerHTML = `
+                        <div class="info-item">
+                            <div class="label">公司名称</div>
+                            <div class="value">${company.name || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">所属行业</div>
+                            <div class="value">${company.industry || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">所在地区</div>
+                            <div class="value">${company.area || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">市盈率PE</div>
+                            <div class="value">${company.pe || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">市净率PB</div>
+                            <div class="value">${company.pb || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">每股收益EPS</div>
+                            <div class="value">${company.esp || '-'}</div>
+                        </div>
+                    `;
+                }
+                
+                const profitInfo = document.getElementById('profitInfo');
+                profitInfo.innerHTML = '';
+                
+                if (data.profit) {
+                    const profit = data.profit;
+                    profitInfo.innerHTML = `
+                        <div class="info-item">
+                            <div class="label">净资产收益率ROE</div>
+                            <div class="value">${profit.roe || '-'}%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">净利润率</div>
+                            <div class="value">${profit.netProfitMargin || '-'}%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">毛利率</div>
+                            <div class="value">${profit.grossProfitMargin || '-'}%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">净利润(万元)</div>
+                            <div class="value">${profit.netProfit || '-'}</div>
+                        </div>
+                    `;
+                }
+                
+                const dupontInfo = document.getElementById('dupontInfo');
+                dupontInfo.innerHTML = '';
+                
+                if (data.dupont) {
+                    const dupont = data.dupont;
+                    dupontInfo.innerHTML = `
+                        <div class="info-item">
+                            <div class="label">ROE</div>
+                            <div class="value">${dupont.roe || '-'}%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">资产周转率</div>
+                            <div class="value">${dupont.assetTurnover || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">权益乘数</div>
+                            <div class="value">${dupont.equityMultiplier || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">净利率</div>
+                            <div class="value">${dupont.netProfitRate || '-'}%</div>
+                        </div>
+                    `;
+                }
+                
+                const cashFlowInfo = document.getElementById('cashFlowInfo');
+                cashFlowInfo.innerHTML = '';
+                
+                if (data.cash_flow) {
+                    const cash = data.cash_flow;
+                    cashFlowInfo.innerHTML = `
+                        <div class="info-item">
+                            <div class="label">销售现金率</div>
+                            <div class="value">${cash.cashFromSales || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">资产回报率</div>
+                            <div class="value">${cash.returnRate || '-'}%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">净利润现金含量</div>
+                            <div class="value">${cash.cashFromNetProfit || '-'}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载基本面数据失败:', error);
+            }
+        }
+        
+        async function loadNews() {
+            try {
+                const response = await fetch('/api/news', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stock_code: currentStock, count: 10 })
+                });
+                const news = await response.json();
+                
+                const newsList = document.getElementById('newsList');
+                newsList.innerHTML = '';
+                
+                news.forEach(item => {
+                    newsList.innerHTML += `
+                        <li class="news-item" onclick="window.open('${item.url}', '_blank')">
+                            <div class="title">${item.title}</div>
+                            <div class="meta">
+                                <span>${item.time}</span>
+                                <span class="sentiment-tag ${item.sentiment}">${item.sentiment === 'positive' ? '正面' : item.sentiment === 'negative' ? '负面' : '中性'}</span>
+                            </div>
+                        </li>
+                    `;
+                });
+                
+                let positive = 0, negative = 0, neutral = 0;
+                news.forEach(item => {
+                    if (item.sentiment === 'positive') positive++;
+                    else if (item.sentiment === 'negative') negative++;
+                    else neutral++;
+                });
+                
+                const sentimentInfo = document.getElementById('sentimentInfo');
+                sentimentInfo.innerHTML = `
+                    <div class="info-item">
+                        <div class="label">正面新闻</div>
+                        <div class="value" style="color: #00ff88;">${positive}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">负面新闻</div>
+                        <div class="value" style="color: #ff4444;">${negative}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">中性新闻</div>
+                        <div class="value">${neutral}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">舆情得分</div>
+                        <div class="value">${((positive - negative) / news.length).toFixed(2)}</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('加载新闻失败:', error);
+            }
+        }
+        
+        async function screenStocks() {
+            const filters = {
+                pe_min: parseFloat(document.getElementById('peMin').value) || null,
+                pe_max: parseFloat(document.getElementById('peMax').value) || null,
+                pb_min: parseFloat(document.getElementById('pbMin').value) || null,
+                pb_max: parseFloat(document.getElementById('pbMax').value) || null,
+                price_min: parseFloat(document.getElementById('priceMin').value) || null,
+                price_max: parseFloat(document.getElementById('priceMax').value) || null,
+                ma5_above_ma10: document.getElementById('ma5AboveMa10').value === 'true'
+            };
+            
+            Object.keys(filters).forEach(key => {
+                if (filters[key] === null) delete filters[key];
+            });
+            
+            try {
+                const response = await fetch('/api/screen_stocks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filters })
+                });
+                const stocks = await response.json();
+                
+                const resultsDiv = document.getElementById('screenResults');
+                resultsDiv.innerHTML = '';
+                
+                if (stocks.length === 0) {
+                    resultsDiv.innerHTML = '<p style="text-align: center; color: #aaa;">没有找到符合条件的股票</p>';
+                    return;
+                }
+                
+                resultsDiv.innerHTML = `
+                    <table class="result-table">
+                        <thead>
+                            <tr>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>价格</th>
+                                <th>PE</th>
+                                <th>PB</th>
+                                <th>MA5</th>
+                                <th>MA10</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${stocks.map(stock => `
+                                <tr onclick="selectStock('${stock.code}')" style="cursor: pointer;">
+                                    <td>${stock.code}</td>
+                                    <td>${stock.name}</td>
+                                    <td>${stock.price.toFixed(2)}</td>
+                                    <td>${stock.pe || '-'}</td>
+                                    <td>${stock.pb || '-'}</td>
+                                    <td>${stock.ma5.toFixed(2)}</td>
+                                    <td>${stock.ma10.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('筛选股票失败:', error);
+            }
+        }
+        
+        function selectStock(code) {
+            currentStock = code;
+            document.getElementById('stockInput').value = code;
+            loadStock();
+            switchTab(null, 'technical');
+        }
+        
+        async function askAI() {
+            const question = document.getElementById('aiInput').value.trim();
+            if (!question) return;
+            
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.innerHTML += `<div class="chat-message user">${question}</div>`;
+            
+            document.getElementById('aiInput').value = '';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            try {
+                const response = await fetch('/api/ai_question', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, stock_code: currentStock })
+                });
+                const data = await response.json();
+                
+                messagesDiv.innerHTML += `<div class="chat-message ai">${data.answer}</div>`;
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } catch (error) {
+                messagesDiv.innerHTML += `<div class="chat-message ai">抱歉，我无法回答这个问题。</div>`;
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+        
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                askAI();
+            }
+        }
+        
+        async function generateReport() {
+            const reportDiv = document.getElementById('reportContent');
+            reportDiv.innerHTML = '<div class="loading"><div class="spinner"></div>正在生成报告...</div>';
+            
+            try {
+                const response = await fetch('/api/analysis_report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stock_code: currentStock })
+                });
+                const data = await response.json();
+                
+                reportDiv.innerHTML = data.report;
+            } catch (error) {
+                reportDiv.innerHTML = '生成报告失败，请稍后重试。';
+            }
+        }
+        
+        function switchTab(event, tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+            
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                const tabs = document.querySelectorAll('.tab');
+                tabs.forEach(tab => {
+                    if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(tabName)) {
+                        tab.classList.add('active');
+                    }
+                });
+            }
+            document.getElementById(tabName).classList.add('active');
+        }
+        
+        async function togglePreferences() {
+            const modal = document.getElementById('preferencesModal');
+            if (modal.style.display === 'none') {
+                await loadPreferences();
+                modal.style.display = 'flex';
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+        
+        async function loadPreferences() {
+            try {
+                const response = await fetch('/api/user_preferences');
+                const prefs = await response.json();
+                
+                document.getElementById('riskTolerance').value = prefs.risk_tolerance || 'medium';
+                document.getElementById('holdingPeriod').value = prefs.holding_period || 'medium';
+                document.getElementById('capitalSize').value = prefs.capital_size || 'medium';
+                document.getElementById('preferredSectors').value = (prefs.preferred_sectors || []).join(',');
+            } catch (error) {
+                console.error('加载用户偏好失败:', error);
+            }
+        }
+        
+        async function savePreferences() {
+            const prefs = {
+                risk_tolerance: document.getElementById('riskTolerance').value,
+                holding_period: document.getElementById('holdingPeriod').value,
+                capital_size: document.getElementById('capitalSize').value,
+                preferred_sectors: document.getElementById('preferredSectors').value.split(',').map(s => s.trim()).filter(s => s)
+            };
+            
+            try {
+                await fetch('/api/user_preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(prefs)
+                });
+                
+                togglePreferences();
+            } catch (error) {
+                console.error('保存用户偏好失败:', error);
+            }
+        }
+        
+        loadStockList();
+        loadStock();
+    </script>
+</body>
+</html>
